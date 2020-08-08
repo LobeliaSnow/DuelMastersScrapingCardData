@@ -9,6 +9,6 @@
   - [settings]  
   chrome_driver_path = C:\Users\XXX\AppData\Local\Programs\Python\Python37\Lib\site-packages\chromedriver_binary\chromedriver.exe  
   headless_mode = True  
-  master_path = 'master.csv'
+  master_path = master.csv
   - chrome_driver_pathはchromedriverへのパス
   - headless_modeはchromeを非表示にするかどうか
