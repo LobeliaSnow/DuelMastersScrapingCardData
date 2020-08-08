@@ -7,7 +7,7 @@
 - 別途同階層にenviorment.iniを作成すれば、環境変数を設定できる
   - 例 enviorment.ini
   - [settings]  
-  chrome_driver_path = C:\Users\XXX\AppData\Local\Programs\Python\Python37\Lib\site-packages\chromedriver_binary\chromedriver.exe
+  chrome_driver_path = C:\Users\XXX\AppData\Local\Programs\Python\Python37\Lib\site-packages\chromedriver_binary\chromedriver.exe  
   headless_mode = True
   - chrome_driver_pathはchromedriverへのパス
   - headless_modeはchromeを非表示にするかどうか
