@@ -1,6 +1,6 @@
 # readme
 - Python3.7で開発しています
-- urllib,beautifusoup4,seleniumに依存しています
+- urllib,beautifusoup4,selenium,configparserに依存しています
 - これはデュエルマスターズのカードデータをすべてcsv化するプログラムです
 - 絶対に強制終了しないでください、裏で非表示のchromeとchromedriveがゾンビ化します(タスクキルは可能だが量が膨大)
 - ajaxの都合ですべてchromeで開きながら行っているため、非常に低速です
