@@ -8,33 +8,42 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import configparser
 import os
+import csv
 
 # 環境変数
-# 自身のローカル環境に合わせて変えてください
+# enviorment.iniで変えるようにしてください
 chrome_driver_path = 'chromedriver'
 headless_mode = True
+master_path = 'master.csv'
 
-# TODO ツインパクト対応 / 画像DL / csv書き出し
 # TODO マルチスレッド
 
+# 環境変数の読み込み
 def LoadEnviormentVariables(enviorment_path):
     global chrome_driver_path
+    global headless_mode
+    global master_path
     # 環境変数用ファイルの存在を確認
     if os.path.exists(enviorment_path):
         config = configparser.ConfigParser()
         config.read(enviorment_path)
         try:
             data = config.get("settings", "chrome_driver_path")
-            chrome_driver_path = chrome_driver_path if data is None else data
+            chrome_driver_path = data
         except:
             pass
         try:
             data = config.get("settings", "headless_mode")
-            headless_mode = headless_mode if data is None else eval(data)
+            headless_mode = eval(data)
+        except:
+            pass
+        try:
+            data = config.get("settings", "master_path")
+            master_path = data
         except:
             pass
 
-
+# カード単位
 class DuelMastersCard:
     def __init__(self, card_page, link):
         self.site_link = link
@@ -47,6 +56,7 @@ class DuelMastersCard:
         self.rarity = card_page.select_one('#mainContent > section > table > tbody > tr:nth-of-type(3) > td.raretxt').text
         self.power = card_page.select_one('#mainContent > section > table > tbody > tr:nth-of-type(3) > td.powertxt').text
         self.cost = card_page.select_one('#mainContent > section > table > tbody > tr:nth-of-type(4) > td.costtxt').text.split(' ')[0]
+        self.mana = card_page.select_one('#mainContent > section > table:nth-of-type(1) > tbody > tr:nth-of-type(4) > td.manatxt').text
         self.race = card_page.select_one('#mainContent > section > table > tbody > tr:nth-of-type(5) > td').text
         ability_raw = card_page.select_one('#mainContent > section > table > tbody > tr:nth-of-type(7) > td')
         self.ability = ''
@@ -66,6 +76,7 @@ class DuelMastersCard:
         self.second_rarity = card_page.select_one('#mainContent > section > table:nth-of-type(2) > tbody > tr:nth-of-type(3) > td.raretxt').text
         self.second_power = card_page.select_one('#mainContent > section > table:nth-of-type(2) > tbody > tr:nth-of-type(3) > td.powertxt').text
         self.second_cost = card_page.select_one('#mainContent > section > table:nth-of-type(2) > tbody > tr:nth-of-type(4) > td.costtxt').text.split(' ')[0]
+        self.second_mana = card_page.select_one('#mainContent > section > table:nth-of-type(2) > tbody > tr:nth-of-type(4) > td.manatxt').text
         self.second_race = card_page.select_one('#mainContent > section > table:nth-of-type(2) > tbody > tr:nth-of-type(5) > td').text
         ability_raw = card_page.select_one('#mainContent > section > table:nth-of-type(2) > tbody > tr:nth-of-type(7) > td')
         self.ability = ''
@@ -85,12 +96,14 @@ class DuelMastersCard:
         self.third_rarity = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(3) > td.raretxt').text
         self.third_power = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(3) > td.powertxt').text
         self.third_cost = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(4) > td.costtxt').text.split(' ')[0]
+        self.third_mana = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(4) > td.manatxt').text
         self.third_race = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(5) > td').text
         ability_raw = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(7) > td')
-        self.ability = ''
+        self.ability = '\"'
         for ability in ability_raw:
             self.ability += ability.text.replace('\n', '') + '\n'
         self.third_ability = self.ability.rstrip('\n')
+        self.third_ability += '\"'
         self.third_flavor = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(9) > td').text.replace('\n', '')
         self.third_pic_url = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-child(2) > td.cardarea > div > img').get('src')
 
@@ -113,8 +126,11 @@ class DuelMastersCard:
         ret_value += '\n' + third_card
         return ret_value
 
+# カードボックス
 class DuelMastersCardBox:
     def __init__(self, driver, write_file):
+        self.writer = csv.writer(write_file)
+        self.WriteCardBoxHeader()
         self.driver = driver
         html = connect_html.GetBeautifulSoupFromDriver(self.driver)
         self.page_count = html.select_one('#cardlist > div > div > a.nextpostslink').get('data-page')
@@ -134,8 +150,8 @@ class DuelMastersCardBox:
             # カードリストを順次探索
             self.card_access_list.append(html.select("#cardlist > ul > li"))
             card_list = self.card_access_list[page - 1]
+            self.page_card_box = []
             for card in card_list:
-                self.page_card_box = []
                 # 各カードへのリンク取得
                 data_link = card.contents[0].get('href')
                 # 新たにchromeを開き、対象のカードページへジャンプする
@@ -149,23 +165,48 @@ class DuelMastersCardBox:
                 print(card)
                 # カードボックスへプール
                 self.page_card_box.append(card)
-            # 書き出し
+            # csv書き出し
             if write_file is not None:
-                WriteCardBoxCSV(write_file, self.page_card_box)
+                self.WriteCardBoxCSV(self.page_card_box)
             self.card_box.append(self.page_card_box.append(card))
 
 
-        def WriteCardBoxCSV(self, file, card_box):
-            pass
+    # 以下csv書き出し用関数
+    def WriteCardBoxHeader(self):
+        if self.writer is None:
+            return
+        self.writer.writerow(['収録弾', 'カード名', 'カードの種類', '文明', 'レアリティ', 'パワー', 'コスト', 'マナ','種族', '特殊能力', 'フレーバー', '画像リンク', 'カード名 2', 'カードの種類 2', '文明 2', 'レアリティ 2', 'パワー 2', 'コスト 2', 'マナ 2','種族 2', '特殊能力 2', 'フレーバー 2', '画像リンク 2','カード名 3', 'カードの種類 3', '文明 3', 'レアリティ 3', 'パワー 3', 'コスト 3', 'マナ 3','種族3 ', '特殊能力 3', 'フレーバー 3', '画像リンク 3'])
+    
+    def WriteCardCSV(self, card):
+        data = []
+        first_card = [card.pack, card.name, card.type, card.civilization, card.rarity, card.power, card.cost, card.mana, card.race, card.ability, card.flavor, card.pic_url]
+        data.extend(first_card)
+        empty = ['', '', '', '', '', '', '','', '', '', '']
+        try:
+            second_card = [card.second_name, card.second_type, card.second_civilization, card.second_rarity, card.second_power, card.second_cost, card.second_mana, card.second_race, card.second_ability, card.second_flavor, card.second_pic_url]
+            data.extend(second_card)
+        except:
+            data.extend(empty)
+        try:
+            third_card = [card.third_name, card.third_type, card.third_civilization, card.third_rarity, card.third_power, card.third_cost, card.third_mana, card.third_race, card.third_ability, card.third_flavor, card.third_pic_url]
+            data.extend(third_card)
+        except:
+            data.extend(empty)            
+        self.writer.writerow(data)
+
+    def WriteCardBoxCSV(self, card_box):
+        for card in card_box:
+            self.WriteCardCSV(card)
 
 
+# エントリポイント
 if __name__ == '__main__':
     LoadEnviormentVariables("enviorment.ini")
     # chrome起動、操作権取得
     driver = connect_html.GetDriver('https://dm.takaratomy.co.jp/card/', chrome_driver_path, headless_mode)
-    with open('data/src/sample.csv') as file:
+    with open(master_path, 'w', newline="", encoding='utf-8') as file:
         # カードボックス取得
-        cardbox = DuelMastersCardBox(driver, None)
+        cardbox = DuelMastersCardBox(driver, file)
     # chromeの解放 これをしないとバックグラウンドプロセスにchrome driverとgoogle chromeが大量に発生する
     connect_html.ReleaseDriver(driver)
     
