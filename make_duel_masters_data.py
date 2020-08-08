@@ -6,6 +6,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import configparser
 import os
 
 # 環境変数
@@ -20,9 +21,19 @@ def LoadEnviormentVariables(enviorment_path):
     global chrome_driver_path
     # 環境変数用ファイルの存在を確認
     if os.path.exists(enviorment_path):
-        with open(enviorment_path) as f:
-            # 現在はchromedriverのパスのみ外部ファイル化しているのでこれだけ
-            chrome_driver_path = f.readlines()[0].rstrip('\n')
+        config = configparser.ConfigParser()
+        config.read(enviorment_path)
+        try:
+            data = config.get("settings", "chrome_driver_path")
+            chrome_driver_path = chrome_driver_path if data is None else data
+        except:
+            pass
+        try:
+            data = config.get("settings", "headless_mode")
+            headless_mode = headless_mode if data is None else eval(data)
+        except:
+            pass
+
 
 class DuelMastersCard:
     def __init__(self, card_page, link):
@@ -103,7 +114,7 @@ class DuelMastersCard:
         return ret_value
 
 class DuelMastersCardBox:
-    def __init__(self, driver):
+    def __init__(self, driver, write_file):
         self.driver = driver
         html = connect_html.GetBeautifulSoupFromDriver(self.driver)
         self.page_count = html.select_one('#cardlist > div > div > a.nextpostslink').get('data-page')
@@ -124,6 +135,7 @@ class DuelMastersCardBox:
             self.card_access_list.append(html.select("#cardlist > ul > li"))
             card_list = self.card_access_list[page - 1]
             for card in card_list:
+                self.page_card_box = []
                 # 各カードへのリンク取得
                 data_link = card.contents[0].get('href')
                 # 新たにchromeを開き、対象のカードページへジャンプする
@@ -136,14 +148,24 @@ class DuelMastersCardBox:
                 # デバッグ表示、気になる人はつけるとよい
                 print(card)
                 # カードボックスへプール
-                self.card_box.append(card)
+                self.page_card_box.append(card)
+            # 書き出し
+            if write_file is not None:
+                WriteCardBoxCSV(write_file, self.page_card_box)
+            self.card_box.append(self.page_card_box.append(card))
+
+
+        def WriteCardBoxCSV(self, file, card_box):
+            pass
+
 
 if __name__ == '__main__':
-    LoadEnviormentVariables("enviorment.txt")
+    LoadEnviormentVariables("enviorment.ini")
     # chrome起動、操作権取得
     driver = connect_html.GetDriver('https://dm.takaratomy.co.jp/card/', chrome_driver_path, headless_mode)
-    # カードボックス取得
-    cardbox = DuelMastersCardBox(driver)
+    with open('data/src/sample.csv') as file:
+        # カードボックス取得
+        cardbox = DuelMastersCardBox(driver, None)
     # chromeの解放 これをしないとバックグラウンドプロセスにchrome driverとgoogle chromeが大量に発生する
     connect_html.ReleaseDriver(driver)
     
