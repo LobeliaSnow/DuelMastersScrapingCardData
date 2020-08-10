@@ -24,9 +24,7 @@ headless_mode = True
 master_path = 'master.csv'
 thread_count = -1
 
-# TODO 復帰機能
-
-
+# リストをN分割する関数
 def SplitList(list, n):
     list_size = len(list)
     a = list_size // n
@@ -306,13 +304,14 @@ if __name__ == '__main__':
     driver = connect_html.GetDriver('https://dm.takaratomy.co.jp/card/', chrome_driver_path, headless_mode)
     # 検索開始するカードの位置、既存のカード枚数 + 1
     row_count = 1
+
     # 既存のファイルが存在するのであれば
     if os.path.exists(master_path):
         with open(master_path, 'r', newline="", encoding='utf-8') as file:
             reader = csv.reader(file)
             # ヘッダーが含まれて実際のカード枚数より1多いが、最後のカードの一つ先から読み込むので問題なし
             row_count = len(list(reader))
-        merge = True
+    # 復帰処理などの都合上、追記モードで開く
     with open(master_path, 'a', newline="", encoding='utf-8') as file:
         # カードボックス取得
         cardbox = DuelMastersCardBox(driver, row_count, file)
