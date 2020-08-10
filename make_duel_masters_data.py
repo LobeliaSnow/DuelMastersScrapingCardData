@@ -6,9 +6,15 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 import configparser
+import psutil
+
 import os
 import csv
+import platform
+import concurrent.futures
 
 # 環境変数
 # enviorment.iniで変えるようにしてください
@@ -17,6 +23,13 @@ headless_mode = True
 master_path = 'master.csv'
 
 # TODO マルチスレッド
+
+
+def SplitList(list, n):
+    list_size = len(list)
+    a = list_size // n
+    b = list_size % n
+    return [list[i*a + (i if i < b else b):(i+1)*a + (i+1 if i < b else b)] for i in range(n)]
 
 # 環境変数の読み込み
 def LoadEnviormentVariables(enviorment_path):
@@ -126,6 +139,30 @@ class DuelMastersCard:
         ret_value += '\n' + third_card
         return ret_value
 
+def CardPageProcedure(card_list):
+    page_driver = None
+    temp_box = []
+    for card in card_list:
+        # 各カードへのリンク取得
+        data_link = card.contents[0].get('href')
+        print(data_link)
+        if page_driver is None:
+            # 新規タブで
+            page_driver = connect_html.GetDriver('https://dm.takaratomy.co.jp' + data_link, chrome_driver_path, headless_mode)
+        else:
+            # 現在のタブで
+            page_driver.get('https://dm.takaratomy.co.jp' + data_link)
+        card_page = connect_html.GetBeautifulSoupFromDriver(page_driver)
+        # カード情報をスクレイピング
+        card = DuelMastersCard(card_page, data_link)
+        # デバッグ表示、気になる人はつけるとよい
+        print(card)
+        # カードボックスへプール
+        temp_box.append(card)
+    connect_html.ReleaseDriver(page_driver)
+    return temp_box
+
+
 # カードボックス
 class DuelMastersCardBox:
     def __init__(self, driver, write_file):
@@ -148,28 +185,17 @@ class DuelMastersCardBox:
                 # 更新されたページのhtmlを取得する
                 html = connect_html.GetBeautifulSoupFromDriver(self.driver)
             # カードリストを順次探索
-            self.card_access_list.append(html.select("#cardlist > ul > li"))
-            card_list = self.card_access_list[page - 1]
+            card_list = html.select("#cardlist > ul > li")
             self.page_card_box = []
-            for card in card_list:
-                # 各カードへのリンク取得
-                data_link = card.contents[0].get('href')
-                # 新たにchromeを開き、対象のカードページへジャンプする
-                element_driver = connect_html.GetDriver('https://dm.takaratomy.co.jp' + data_link, chrome_driver_path, headless_mode)
-                card_page = connect_html.GetBeautifulSoupFromDriver(element_driver)
-                # カード情報をスクレイピング
-                card = DuelMastersCard(card_page, data_link)
-                # カードページを開いているchromeを閉じる
-                connect_html.ReleaseDriver(element_driver)
-                # デバッグ表示、気になる人はつけるとよい
-                print(card)
-                # カードボックスへプール
-                self.page_card_box.append(card)
+            cpu_logical_core_count = psutil.cpu_count()
+            split_card_list = SplitList(card_list, cpu_logical_core_count)
+            with concurrent.futures.ThreadPoolExecutor(max_workers = cpu_logical_core_count) as executor:
+                results = list(executor.map(CardPageProcedure, split_card_list))
+            for result in results:
+                self.page_card_box.extend(result)
             # csv書き出し
             if write_file is not None:
                 self.WriteCardBoxCSV(self.page_card_box)
-            self.card_box.append(self.page_card_box.append(card))
-
 
     # 以下csv書き出し用関数
     def WriteCardBoxHeader(self):
