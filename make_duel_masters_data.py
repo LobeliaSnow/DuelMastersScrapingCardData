@@ -270,7 +270,7 @@ class DuelMastersCardBox:
             # csv書き出し
             if writer is not None:
                 self.WriteCardBoxCSV(self.page_card_box)
-
+            break
     # 以下csv書き出し用関数
     def WriteCardBoxHeader(self):
         if self.writer is None:
