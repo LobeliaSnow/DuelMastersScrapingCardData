@@ -1,6 +1,6 @@
 # readme
 - Python3.7で開発しています
-- urllib,beautifusoup4,selenium,configparserに依存しています
+- urllib,beautifusoup4,selenium,configparser,psutilに依存しています
 - これはデュエルマスターズのカードデータをすべてcsv化するプログラムです
 - 絶対に強制終了しないでください、裏で非表示のchromeとchromedriveがゾンビ化します(タスクキルは可能だが量が膨大)
 - ajaxの都合ですべてchromeで開きながら行っているため、非常に低速です
@@ -9,6 +9,11 @@
   - [settings]  
   chrome_driver_path = C:\Users\XXX\AppData\Local\Programs\Python\Python37\Lib\site-packages\chromedriver_binary\chromedriver.exe  
   headless_mode = True  
-  master_path = master.csv
+  master_path = master.csv  
+  thread_count = -1
   - chrome_driver_pathはchromedriverへのパス
   - headless_modeはchromeを非表示にするかどうか
+  - thread_countは何スレッド使用して動かすかの設定、-1でCPUの論理コア数分、0でシングルスレッドモード、それ以上でその数分のスレッドの生成
+- 途中でエラーで落ちても、その場所まで復元できるようにはなっていますが、まだ一度も完走したことがないのでロジックエラーがある可能性があります。  
+発見次第修正し、修正が入るとまた復元ができるようになります
+- このプログラムの利用に対する責任を作者は一切持ちません、すべて自己責任での利用をよろしくお願いいたします
