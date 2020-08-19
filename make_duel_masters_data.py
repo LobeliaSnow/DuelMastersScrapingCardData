@@ -67,7 +67,10 @@ class DuelMastersCard:
     def __init__(self, card_page, link):
         self.site_link = link
         # 以下能力取得
-        name_data = card_page.select_one('#mainContent > section > table > tbody > tr.windowtitle > th').text
+        try:
+            name_data = card_page.select_one('#mainContent > section > table > tbody > tr.windowtitle > th').text
+        except:
+            return
         index = name_data.rfind('(')
         self.name , self.pack = name_data[:index], name_data[index:]
         self.type = card_page.select_one('#mainContent > section > table > tbody > tr:nth-of-type(2) > td.typetxt').text
@@ -132,9 +135,12 @@ class DuelMastersCard:
 
     # printで表示するためのもの、デバッグ用
     def __str__(self):
-        first_card = 'name : ' + self.name + '\n' + 'pack : ' + self.pack + '\n' + 'type : ' + self.type + '\n' + 'civilization : ' + self.civilization+ '\n' + 'rarity : ' + self.rarity + '\n' \
-        + 'power : ' + self.power + '\n' + 'cost : ' + self.cost + '\n' + 'race : ' + self.race + '\n' + 'ability : ' + self.ability + '\n' + 'flavor : ' + self.flavor + '\n'
-        ret_value =  'first card : \n' + first_card
+        try:
+            first_card = 'name : ' + self.name + '\n' + 'pack : ' + self.pack + '\n' + 'type : ' + self.type + '\n' + 'civilization : ' + self.civilization+ '\n' + 'rarity : ' + self.rarity + '\n' \
+            + 'power : ' + self.power + '\n' + 'cost : ' + self.cost + '\n' + 'race : ' + self.race + '\n' + 'ability : ' + self.ability + '\n' + 'flavor : ' + self.flavor + '\n'
+            ret_value =  'first card : \n' + first_card
+        except:
+            return 'unlink'
         try:
             second_card = 'name : ' + self.second_name + '\n' + 'type : ' + self.second_type + '\n' + 'civilization : ' + self.second_civilization+ '\n' + 'rarity : ' + self.second_rarity + '\n' \
             + 'power : ' + self.second_power + '\n' + 'cost : ' + self.second_cost + '\n' + 'race : ' + self.second_race + '\n' + 'ability : ' + self.second_ability + '\n' + 'flavor : ' + self.second_flavor + '\n'
@@ -149,6 +155,14 @@ class DuelMastersCard:
         ret_value += '\n' + third_card
         return ret_value
 
+class DuelMastersUnlinkCard:
+    def __init__(self):
+        self.name = 'リンク切れカードです'
+    
+    def __str__(self):
+        return self.name
+
+ 
 # 各ページのカードリストを処理するための関数
 def CardPageProcedure(card_list):
     page_driver = None
@@ -164,13 +178,18 @@ def CardPageProcedure(card_list):
             # 現在のタブで
             page_driver.get('https://dm.takaratomy.co.jp' + data_link)
         card_page = connect_html.GetBeautifulSoupFromDriver(page_driver)
-        # カード情報をスクレイピング
-        card = DuelMastersCard(card_page, data_link)
-        # デバッグ表示、気になる人はつけるとよい
-        print(card)
-        # カードボックスへプール
-        temp_box.append(card)
-    connect_html.ReleaseDriver(page_driver)
+        try:
+            # カード情報をスクレイピング
+            card = DuelMastersCard(card_page, data_link)
+            # デバッグ表示、気になる人はつけるとよい
+            print(card)
+            # カードボックスへプール
+            temp_box.append(card)
+        except:
+            print("リンク切れ")
+            temp_box.append(DuelMastersUnlinkCard())
+    if page_driver is not None:
+        connect_html.ReleaseDriver(page_driver)
     return temp_box
 
 
@@ -231,10 +250,13 @@ class DuelMastersCardBox:
                 wait = WebDriverWait(driver, 15)
                 wait.until(lambda driver: driver.execute_script('return jQuery.active') == 0)
                 wait.until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+                print('recover page : ' + str(recover_index) + '\n')
+
         # ここで一旦待ち、ページのロードが終わっていない可能性
         time.sleep(1)
         # 各ページ用
-        for page in range(start_page, int(self.page_count)):
+        for page in range(start_page, int(self.page_count) + 1):
+            print('page : ' + str(page) + '\n')
             # 次のページへジャンプ
             if int(page) > 1:
                 link = self.driver.find_element_by_link_text(str(page))
@@ -267,7 +289,7 @@ class DuelMastersCardBox:
                 self.page_card_box = CardPageProcedure(card_list)
             # csv書き出し
             if writer is not None:
-                self.WriteCardBoxCSV(self.page_card_box)
+                self.WriteCardBoxCSV(self.page_card_box, page)
     
     # 以下csv書き出し用関数
     def WriteCardBoxHeader(self):
@@ -275,11 +297,16 @@ class DuelMastersCardBox:
             return
         self.writer.writerow(['収録弾', 'カード名', 'カードの種類', '文明', 'レアリティ', 'パワー', 'コスト', 'マナ','種族', '特殊能力', 'フレーバー', '画像リンク', 'カード名 2', 'カードの種類 2', '文明 2', 'レアリティ 2', 'パワー 2', 'コスト 2', 'マナ 2','種族 2', '特殊能力 2', 'フレーバー 2', '画像リンク 2','カード名 3', 'カードの種類 3', '文明 3', 'レアリティ 3', 'パワー 3', 'コスト 3', 'マナ 3','種族3 ', '特殊能力 3', 'フレーバー 3', '画像リンク 3'])
     
-    def WriteCardCSV(self, card):
+    def WriteCardCSV(self, card, page):
         data = []
-        first_card = [card.pack, card.name, card.type, card.civilization, card.rarity, card.power, card.cost, card.mana, card.race, card.ability, card.flavor, card.pic_url]
-        data.extend(first_card)
         empty = ['', '', '', '', '', '', '','', '', '', '']
+        try:
+            first_card = [card.pack, card.name, card.type, card.civilization, card.rarity, card.power, card.cost, card.mana, card.race, card.ability, card.flavor, card.pic_url]
+            data.extend(first_card)
+        except:
+            data.append('')
+            data.extend(empty)
+            data[1] = 'unlink card page : ' + str(page)
         try:
             second_card = [card.second_name, card.second_type, card.second_civilization, card.second_rarity, card.second_power, card.second_cost, card.second_mana, card.second_race, card.second_ability, card.second_flavor, card.second_pic_url]
             data.extend(second_card)
@@ -292,9 +319,9 @@ class DuelMastersCardBox:
             data.extend(empty)            
         self.writer.writerow(data)
 
-    def WriteCardBoxCSV(self, card_box):
+    def WriteCardBoxCSV(self, card_box, page):
         for card in card_box:
-            self.WriteCardCSV(card)
+            self.WriteCardCSV(card, page)
 
 
 # エントリポイント
