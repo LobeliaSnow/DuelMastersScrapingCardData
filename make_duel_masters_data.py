@@ -244,7 +244,7 @@ class DuelMastersCardBox:
         self.card_box = []
         # 何ページ目から検索するか
         start_page = 1
-        start_card = 1
+        start_card = 0
         # 既存のCSVが存在している場合
         if start_index > 1:
             # デュエマに存在するカード枚数を取得
@@ -388,7 +388,6 @@ if __name__ == '__main__':
     if os.path.exists(master_path):
         with open(master_path, 'r', newline="", encoding='utf-8') as file:
             reader = csv.reader(file)
-            # ヘッダーが含まれて実際のカード枚数より1多いが、最後のカードの一つ先から読み込むので問題なし
             matrix = list(reader)
             row_count = len(matrix)
             if row_count > 1:
