@@ -192,12 +192,50 @@ def CardPageProcedure(card_list):
         connect_html.ReleaseDriver(page_driver)
     return temp_box
 
+def GetCardList(html):
+    return html.select("#cardlist > ul > li")
+
+def TotalCardCount(html):
+    return html.select_one('#total_count').text
+
+# csv書き出し用関数
+def WriteCardBoxHeader(writer):
+    if writer is None:
+        return
+    writer.writerow(['収録弾', 'カード名', 'カードの種類', '文明', 'レアリティ', 'パワー', 'コスト', 'マナ','種族', '特殊能力', 'フレーバー', '画像リンク', 'カード名 2', 'カードの種類 2', '文明 2', 'レアリティ 2', 'パワー 2', 'コスト 2', 'マナ 2','種族 2', '特殊能力 2', 'フレーバー 2', '画像リンク 2','カード名 3', 'カードの種類 3', '文明 3', 'レアリティ 3', 'パワー 3', 'コスト 3', 'マナ 3','種族3 ', '特殊能力 3', 'フレーバー 3', '画像リンク 3'])
+
+def WriteCardCSV(writer, card, page):
+    data = []
+    empty = ['', '', '', '', '', '', '','', '', '', '']
+    try:
+        first_card = [card.pack, card.name, card.type, card.civilization, card.rarity, card.power, card.cost, card.mana, card.race, card.ability, card.flavor, card.pic_url]
+        data.extend(first_card)
+    except:
+        data.append('')
+        data.extend(empty)
+        data[1] = 'unlink card page : ' + str(page)
+    try:
+        second_card = [card.second_name, card.second_type, card.second_civilization, card.second_rarity, card.second_power, card.second_cost, card.second_mana, card.second_race, card.second_ability, card.second_flavor, card.second_pic_url]
+        data.extend(second_card)
+    except:
+        data.extend(empty)
+    try:
+        third_card = [card.third_name, card.third_type, card.third_civilization, card.third_rarity, card.third_power, card.third_cost, card.third_mana, card.third_race, card.third_ability, card.third_flavor, card.third_pic_url]
+        data.extend(third_card)
+    except:
+        data.extend(empty)            
+    writer.writerow(data)
+
+def WriteCardBoxCSV(writer, card_box, page):
+    for card in card_box:
+        WriteCardCSV(writer, card, page)
+
 
 # カードボックス
 class DuelMastersCardBox:
-    def __init__(self, driver, start_index, writer):
+    def __init__(self, driver, start_index, write_file, target_name = None):
         # csvの書き込み用
-        self.writer = csv.writer(writer)
+        self.writer = csv.writer(write_file)
         # 以下スクレイピング用
         self.driver = driver
         html = connect_html.GetBeautifulSoupFromDriver(self.driver)
@@ -206,13 +244,14 @@ class DuelMastersCardBox:
         self.card_box = []
         # 何ページ目から検索するか
         start_page = 1
-        start_card = 1
+        start_card = 0
         # 既存のCSVが存在している場合
         if start_index > 1:
             # デュエマに存在するカード枚数を取得
-            card_total_count = html.select_one('#total_count').text
+            card_total_count = TotalCardCount(html)
             # すでに最大枚数取得している場合は新規カードはないので終了
-            if start_index == int(card_total_count):
+            if start_index >= int(card_total_count):
+                print("既に最新のデータです")
                 return
             # 復帰する必要が出てきたので、1ページに存在する最大数を取得
             page_card_max_count = len(html.select("#cardlist > ul > li"))
@@ -221,37 +260,17 @@ class DuelMastersCardBox:
             # カードの復帰場所
             start_card = int(start_index % page_card_max_count)
         else:
-            # ヘッダー作成
-            self.WriteCardBoxHeader()
+            # 差分作成用にはヘッダーいらない
+            if target_name == None:
+                # ヘッダー作成
+                WriteCardBoxHeader(self.writer)
         global thread_count
         # 0以下ならCPUにとって最適なコア数に
         if thread_count < 0:
             # CPUの論理コア数取得
             thread_count = psutil.cpu_count()
-
         # ページの復帰処理
-        if start_page > 1 and start_page != 2:
-            # TODO 最適化
-            # start_page-1の理由は一発目の処理時に次のページへ進むため
-            for recover_index in range(2, start_page):
-                if recover_index == start_page:
-                    recover_index = start_page - 1
-                # 2ページずつ飛ばす
-                elif recover_index % 2 == 0 and recover_index != start_page:
-                    continue
-                try:
-                    link = self.driver.find_element_by_link_text(str(recover_index))
-                except:
-                    #リンクが運悪く取得できなかった場合は一旦1秒待つ
-                    time.sleep(1)
-                    link = self.driver.find_element_by_link_text(str(recover_index))
-                driver.execute_script("arguments[0].click();", link)              
-                # 以下ajaxの読み込み完了待ち
-                wait = WebDriverWait(driver, 15)
-                wait.until(lambda driver: driver.execute_script('return jQuery.active') == 0)
-                wait.until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
-                print('recover page : ' + str(recover_index) + '\n')
-
+        self.RecoverPage(self.driver, start_page)
         # ここで一旦待ち、ページのロードが終わっていない可能性
         time.sleep(1)
         # 各ページ用
@@ -259,70 +278,103 @@ class DuelMastersCardBox:
             print('page : ' + str(page) + '\n')
             # 次のページへジャンプ
             if int(page) > 1:
-                link = self.driver.find_element_by_link_text(str(page))
-                link.click()
-                # 以下ajaxの読み込み完了待ち
-                wait = WebDriverWait(driver, 15)
-                wait.until(lambda driver: driver.execute_script('return jQuery.active') == 0)
-                wait.until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
-                # 更新されたページのhtmlを取得する
-                html = connect_html.GetBeautifulSoupFromDriver(self.driver)
+                html = self.PageJump(self.driver, page)
             # カードリスト取得
-            card_list = html.select("#cardlist > ul > li")
+            card_list = GetCardList(html)
             # カードの復帰処理
             if start_card > 0:
-                del card_list[0 : start_card - 1]
+                del card_list[0 : start_card]
                 start_card = 0
-            self.page_card_box = []
-            # マルチスレッドモード
-            if thread_count > 0:
-                # スレッド数分に分割
-                split_card_list = SplitList(card_list, thread_count)
-                # マルチスレッドによるカードデータの収集
-                with concurrent.futures.ThreadPoolExecutor(max_workers = thread_count) as executor:
-                    results = list(executor.map(CardPageProcedure, split_card_list))
-                # 各スレッドの結果を結合
-                for result in results:
-                    self.page_card_box.extend(result)
-            else:
-                # シングルスレッドモード
-                self.page_card_box = CardPageProcedure(card_list)
+            # カードリストから実際にカードを取得
+            self.page_card_box = self.ScrapingCardInfo(card_list)
+            # 対象カードが設定されているのであればそこで打ち止め
+            hit = False
+            if target_name != None:
+                for index in range(0, len(self.page_card_box)):
+                    if self.page_card_box[index].name == target_name:
+                        hit = True
+                        del self.page_card_box[index:]
+                        break                        
             # csv書き出し
-            if writer is not None:
-                self.WriteCardBoxCSV(self.page_card_box, page)
-    
-    # 以下csv書き出し用関数
-    def WriteCardBoxHeader(self):
-        if self.writer is None:
-            return
-        self.writer.writerow(['収録弾', 'カード名', 'カードの種類', '文明', 'レアリティ', 'パワー', 'コスト', 'マナ','種族', '特殊能力', 'フレーバー', '画像リンク', 'カード名 2', 'カードの種類 2', '文明 2', 'レアリティ 2', 'パワー 2', 'コスト 2', 'マナ 2','種族 2', '特殊能力 2', 'フレーバー 2', '画像リンク 2','カード名 3', 'カードの種類 3', '文明 3', 'レアリティ 3', 'パワー 3', 'コスト 3', 'マナ 3','種族3 ', '特殊能力 3', 'フレーバー 3', '画像リンク 3'])
-    
-    def WriteCardCSV(self, card, page):
+            if write_file is not None:
+                WriteCardBoxCSV(self.writer, self.page_card_box, page)
+            if hit:
+                return
+
+    # TODO PageJumpと統合
+    def RecoverPage(self, driver, start_page):
+        # 2ページ目の要素を書き換え
+        driver.execute_script("document.querySelector('#cardlist > div > div > a:nth-child(2)').dataset.page=" + str(start_page - 1) + ";")
+        # 2ページ目の要素を書き換えたので2ページ目のボタンを押す
+        link = self.driver.find_element_by_link_text(str(2))
+        link.click()
+        # 以下ajaxの読み込み完了待ち
+        wait = WebDriverWait(driver, 15)
+        wait.until(lambda driver: driver.execute_script('return jQuery.active') == 0)
+        wait.until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+
+    def PageJump(self, page_driver, page):
+        link = page_driver.find_element_by_link_text(str(page))
+        link.click()
+        # 以下ajaxの読み込み完了待ち
+        wait = WebDriverWait(page_driver, 15)
+        wait.until(lambda driver: page_driver.execute_script('return jQuery.active') == 0)
+        wait.until(lambda driver: page_driver.execute_script('return document.readyState') == 'complete')
+        # 更新されたページのhtmlを取得する
+        return connect_html.GetBeautifulSoupFromDriver(page_driver)
+
+    def ScrapingCardInfo(self, card_list):
+        page_card_box = []
+        # マルチスレッドモード
+        if thread_count > 0:
+            # スレッド数分に分割
+            split_card_list = SplitList(card_list, thread_count)
+            # マルチスレッドによるカードデータの収集
+            with concurrent.futures.ThreadPoolExecutor(max_workers = thread_count) as executor:
+                results = list(executor.map(CardPageProcedure, split_card_list))
+            # 各スレッドの結果を結合
+            for result in results:
+                page_card_box.extend(result)
+        else:
+            # シングルスレッドモード
+            page_card_box = CardPageProcedure(card_list)    
+        return page_card_box
+
+def UpdateMasterData(driver, first_card):
+    # 更新の必要有り無しを調べる
+    html = connect_html.GetBeautifulSoupFromDriver(driver)
+    card_list = GetCardList(html)
+    del card_list[1:]
+    card_box = CardPageProcedure(card_list)
+    print('top card : ' + card_box[0].name)
+    print('data top card : ' + first_card)
+    if card_box[0].name != first_card:
+        print("更新が必要")
+        global master_path
+        diff_path = master_path + '.diff'
+        # 差分ファイルの作成
+        with open(diff_path, 'w', newline="", encoding='utf-8') as file:
+            DuelMastersCardBox(driver, 1, file, first_card)
         data = []
-        empty = ['', '', '', '', '', '', '','', '', '', '']
-        try:
-            first_card = [card.pack, card.name, card.type, card.civilization, card.rarity, card.power, card.cost, card.mana, card.race, card.ability, card.flavor, card.pic_url]
-            data.extend(first_card)
-        except:
-            data.append('')
-            data.extend(empty)
-            data[1] = 'unlink card page : ' + str(page)
-        try:
-            second_card = [card.second_name, card.second_type, card.second_civilization, card.second_rarity, card.second_power, card.second_cost, card.second_mana, card.second_race, card.second_ability, card.second_flavor, card.second_pic_url]
-            data.extend(second_card)
-        except:
-            data.extend(empty)
-        try:
-            third_card = [card.third_name, card.third_type, card.third_civilization, card.third_rarity, card.third_power, card.third_cost, card.third_mana, card.third_race, card.third_ability, card.third_flavor, card.third_pic_url]
-            data.extend(third_card)
-        except:
-            data.extend(empty)            
-        self.writer.writerow(data)
-
-    def WriteCardBoxCSV(self, card_box, page):
-        for card in card_box:
-            self.WriteCardCSV(card, page)
-
+        # 実際のファイル読み込み
+        with open(diff_path, 'r', newline="", encoding='utf-8') as file:
+            diff_reader = csv.reader(file)
+            diff_data = list(diff_reader)
+            with open(master_path, 'r', newline="", encoding='utf-8') as file:
+                reader = csv.reader(file)
+                exist_data = list(reader)
+                del exist_data[0]
+                print('new card count : ' + str(len(diff_data)))
+                data.extend(diff_data)
+                data.extend(exist_data)
+        os.remove(diff_path)
+        # 結合したものをcsv化
+        with open(master_path, 'w', newline = "", encoding = 'utf-8') as file:
+            writer = csv.writer(file)
+            WriteCardBoxHeader(writer)
+            writer.writerows(data)
+        return len(data)
+    return 0
 
 # エントリポイント
 if __name__ == '__main__':
@@ -331,13 +383,19 @@ if __name__ == '__main__':
     driver = connect_html.GetDriver('https://dm.takaratomy.co.jp/card/', chrome_driver_path, headless_mode)
     # 検索開始するカードの位置、既存のカード枚数 + 1
     row_count = 1
-
+    first_card = None
     # 既存のファイルが存在するのであれば
     if os.path.exists(master_path):
         with open(master_path, 'r', newline="", encoding='utf-8') as file:
             reader = csv.reader(file)
-            # ヘッダーが含まれて実際のカード枚数より1多いが、最後のカードの一つ先から読み込むので問題なし
-            row_count = len(list(reader))
+            matrix = list(reader)
+            row_count = len(matrix)
+            if row_count > 1:
+                first_card = matrix[1][1]
+                value = UpdateMasterData(driver, first_card)
+                if value > 1:
+                    row_count = value
+
     # 復帰処理などの都合上、追記モードで開く
     with open(master_path, 'a', newline="", encoding='utf-8') as file:
         # カードボックス取得
@@ -345,4 +403,3 @@ if __name__ == '__main__':
     
     # chromeの解放 これをしないとバックグラウンドプロセスにchrome driverとgoogle chromeが大量に発生する
     connect_html.ReleaseDriver(driver)
-    
