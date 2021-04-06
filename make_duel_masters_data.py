@@ -8,6 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.select import Select
 import configparser
 import psutil
 
@@ -21,7 +22,7 @@ import time
 # enviorment.iniで変えるようにしてください
 chrome_driver_path = 'chromedriver'
 headless_mode = True
-master_path = 'master.csv'
+export_path = 'master'
 thread_count = -1
 
 # リストをN分割する関数
@@ -52,7 +53,7 @@ def LoadEnviormentVariables(enviorment_path):
         except:
             pass
         try:
-            data = config.get("settings", "master_path")
+            data = config.get("settings", "export_path")
             master_path = data
         except:
             pass
@@ -239,7 +240,14 @@ class DuelMastersCardBox:
         # 以下スクレイピング用
         self.driver = driver
         html = connect_html.GetBeautifulSoupFromDriver(self.driver)
-        self.page_count = html.select_one('#cardlist > div > div > a.nextpostslink').get('data-page')
+        page_box = html.select('#cardlist > div > div')
+        for page in reversed(page_box[0].contents):
+            if page != ' ':
+                try:
+                    self.page_count = page['data-page']
+                except:
+                    self.page_count = page.text
+                break
         self.card_access_list = []
         self.card_box = []
         # 何ページ目から検索するか
@@ -303,6 +311,8 @@ class DuelMastersCardBox:
 
     # TODO PageJumpと統合
     def RecoverPage(self, driver, start_page):
+        if int(start_page) <= 1:
+            return
         # 2ページ目の要素を書き換え
         driver.execute_script("document.querySelector('#cardlist > div > div > a:nth-child(2)').dataset.page=" + str(start_page - 1) + ";")
         # 2ページ目の要素を書き換えたので2ページ目のボタンを押す
@@ -376,17 +386,13 @@ def UpdateMasterData(driver, first_card):
         return len(data)
     return 0
 
-# エントリポイント
-if __name__ == '__main__':
-    LoadEnviormentVariables("enviorment.ini")
-    # chrome起動、操作権取得
-    driver = connect_html.GetDriver('https://dm.takaratomy.co.jp/card/', chrome_driver_path, headless_mode)
+def PageCroll(driver, file_path):
     # 検索開始するカードの位置、既存のカード枚数 + 1
     row_count = 1
     first_card = None
     # 既存のファイルが存在するのであれば
-    if os.path.exists(master_path):
-        with open(master_path, 'r', newline="", encoding='utf-8') as file:
+    if os.path.exists(file_path):
+        with open(file_path, 'r', newline="", encoding='utf-8') as file:
             reader = csv.reader(file)
             matrix = list(reader)
             row_count = len(matrix)
@@ -397,9 +403,38 @@ if __name__ == '__main__':
                     row_count = value
 
     # 復帰処理などの都合上、追記モードで開く
-    with open(master_path, 'a', newline="", encoding='utf-8') as file:
+    with open(file_path, 'a', newline="", encoding='utf-8') as file:
         # カードボックス取得
         cardbox = DuelMastersCardBox(driver, row_count, file)
-    
+    print('complete')
+
+
+# エントリポイント
+if __name__ == '__main__':
+    LoadEnviormentVariables("enviorment.ini")
+    # chrome起動、操作権取得
+    driver = connect_html.GetDriver('https://dm.takaratomy.co.jp/card/', chrome_driver_path, headless_mode)
+    html = connect_html.GetBeautifulSoupFromDriver(driver)
+    # https://yuki.world/selenium-select/#t_valuexSelectselect_by_value
+    products = driver.find_element_by_xpath('//*[@id="search_cond"]/div[1]/div[2]/select')
+    select_products = Select(products)
+    all_options = select_products.options
+    for option in all_options:
+        if option.get_attribute('value') == '':
+            continue
+        # print(option.text) # 選択肢のテキスト
+        # print(option.get_attribute('outerHTML')) # HTMLタグ
+        id = option.get_attribute('value')
+        select_products.select_by_value(id)
+        search_button = driver.find_element_by_xpath('//*[@id="search_cond"]/div[3]/input[1]')
+        search_button.click()
+        # 以下ajaxの読み込み完了待ち
+        wait = WebDriverWait(driver, 15)
+        wait.until(lambda driver: driver.execute_script('return jQuery.active') == 0)
+        wait.until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
+        print(id) # value属性の値
+        product_name = option.get_attribute('text')
+        PageCroll(driver, export_path + '/' + product_name + '.csv')
+        print(product_name + ' complete')
     # chromeの解放 これをしないとバックグラウンドプロセスにchrome driverとgoogle chromeが大量に発生する
     connect_html.ReleaseDriver(driver)

@@ -27,7 +27,6 @@ def ReleaseDriver(driver):
     driver.close()
     driver.quit()
 
-
 def GetBeautifulSoupFromHTML(url):
     html = request.urlopen(url)
     return BeautifulSoup(html, 'html.parser')
