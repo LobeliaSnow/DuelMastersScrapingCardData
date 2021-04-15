@@ -113,26 +113,25 @@ class DuelMastersCard:
         self.second_flavor = card_page.select_one('#mainContent > section > table:nth-of-type(2) > tbody > tr:nth-of-type(9) > td').text.replace('\n', '')
         self.second_pic_url = card_page.select_one('#mainContent > section > table:nth-of-type(2) > tbody > tr:nth-child(2) > td.cardarea > div > img').get('src')
         # 3D龍解用
-        name_data = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr.windowtitle > th')
+        name_data = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr.windowtitle > th')
         if name_data is None:
             return
         index = name_data.text.rfind('(')
         self.third_name = name_data.text[:index]
-        self.third_type = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(2) > td.typetxt').text
-        self.third_civilization = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(2) > td.civtxt').text
-        self.third_rarity = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(3) > td.raretxt').text
-        self.third_power = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(3) > td.powertxt').text
-        self.third_cost = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(4) > td.costtxt').text.split(' ')[0]
-        self.third_mana = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(4) > td.manatxt').text
-        self.third_race = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(5) > td').text
-        ability_raw = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(7) > td')
-        self.ability = '\"'
+        self.third_type = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-of-type(2) > td.typetxt').text
+        self.third_civilization = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-of-type(2) > td.civtxt').text
+        self.third_rarity = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-of-type(3) > td.raretxt').text
+        self.third_power = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-of-type(3) > td.powertxt').text
+        self.third_cost = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-of-type(4) > td.costtxt').text.split(' ')[0]
+        self.third_mana = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-of-type(4) > td.manatxt').text
+        self.third_race = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-of-type(5) > td').text
+        ability_raw = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-of-type(7) > td')
+        self.ability = ''
         for ability in ability_raw:
             self.ability += ability.text.replace('\n', '') + '\n'
         self.third_ability = self.ability.rstrip('\n')
-        self.third_ability += '\"'
-        self.third_flavor = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-of-type(9) > td').text.replace('\n', '')
-        self.third_pic_url = card_page.select_one('#mainContent > section > table:nth-of-type(6) > tbody > tr:nth-child(2) > td.cardarea > div > img').get('src')
+        self.third_flavor = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-of-type(9) > td').text.replace('\n', '')
+        self.third_pic_url = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-child(2) > td.cardarea > div > img').get('src')
 
     # printで表示するためのもの、デバッグ用
     def __str__(self):
