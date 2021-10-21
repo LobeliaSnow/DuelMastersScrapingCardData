@@ -85,10 +85,10 @@ class DuelMastersCard:
         self.second_mana = card_page.select_one('#mainContent > section > table:nth-of-type(2) > tbody > tr:nth-of-type(4) > td.manatxt').text
         self.second_race = card_page.select_one('#mainContent > section > table:nth-of-type(2) > tbody > tr:nth-of-type(5) > td').text
         ability_raw = card_page.select_one('#mainContent > section > table:nth-of-type(2) > tbody > tr:nth-of-type(7) > td')
-        self.ability = ''
+        self.second_ability = ''
         for ability in ability_raw:
-            self.ability += ability.text.replace('\n', '') + '\n'
-        self.second_ability = self.ability.rstrip('\n')
+            self.second_ability += ability.text.replace('\n', '') + '\n'
+        self.second_ability = self.second_ability.rstrip('\n')
         self.second_flavor = card_page.select_one('#mainContent > section > table:nth-of-type(2) > tbody > tr:nth-of-type(9) > td').text.replace('\n', '')
         self.second_pic_url = card_page.select_one('#mainContent > section > table:nth-of-type(2) > tbody > tr:nth-child(2) > td.cardarea > div > img').get('src')
         # 3D龍解用
@@ -105,10 +105,10 @@ class DuelMastersCard:
         self.third_mana = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-of-type(4) > td.manatxt').text
         self.third_race = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-of-type(5) > td').text
         ability_raw = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-of-type(7) > td')
-        self.ability = ''
+        self.third_ability = ''
         for ability in ability_raw:
-            self.ability += ability.text.replace('\n', '') + '\n'
-        self.third_ability = self.ability.rstrip('\n')
+            self.third_ability += ability.text.replace('\n', '') + '\n'
+        self.third_ability = self.third_ability.rstrip('\n')
         self.third_flavor = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-of-type(9) > td').text.replace('\n', '')
         self.third_pic_url = card_page.select_one('#mainContent > section > table:nth-of-type(3) > tbody > tr:nth-child(2) > td.cardarea > div > img').get('src')
 
@@ -160,10 +160,14 @@ def CardPageProcedure(card_list):
         try:
             # カード情報をスクレイピング
             card = DuelMastersCard(card_page, data_link)
-            # デバッグ表示、気になる人はつけるとよい
-            print(card)
-            # カードボックスへプール
-            temp_box.append(card)
+            if card.name == "unlink":
+                print("リンク切れ")
+                temp_box.append(DuelMastersUnlinkCard())
+            else:
+                # デバッグ表示、気になる人はつけるとよい
+                print(card)
+                # カードボックスへプール
+                temp_box.append(card)
         except:
             print("リンク切れ")
             temp_box.append(DuelMastersUnlinkCard())
@@ -297,7 +301,7 @@ class DuelMastersCardBox:
         link = self.driver.find_element_by_link_text(str(2))
         link.click()
         # 以下ajaxの読み込み完了待ち
-        wait = WebDriverWait(driver, 15)
+        wait = WebDriverWait(driver, 100)
         wait.until(lambda driver: driver.execute_script('return jQuery.active') == 0)
         wait.until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
 
@@ -305,7 +309,7 @@ class DuelMastersCardBox:
         link = page_driver.find_element_by_link_text(str(page))
         link.click()
         # 以下ajaxの読み込み完了待ち
-        wait = WebDriverWait(page_driver, 15)
+        wait = WebDriverWait(page_driver, 100)
         wait.until(lambda driver: page_driver.execute_script('return jQuery.active') == 0)
         wait.until(lambda driver: page_driver.execute_script('return document.readyState') == 'complete')
         # 更新されたページのhtmlを取得する

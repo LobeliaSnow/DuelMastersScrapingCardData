@@ -14,10 +14,7 @@ import psutil
 
 import os
 import csv
-import platform
-import concurrent.futures
-import time
-
+import stat
 import duel_masters_card_box
 
 # 環境変数
@@ -59,7 +56,7 @@ def LoadEnviormentVariables(enviorment_path):
             pass
     duel_masters_card_box.SettingEnviorment(chrome_driver_path,headless_mode,export_path,thread_count)
 
-def UpdateMasterData(driver, first_card):
+def UpdateMasterData(driver, file_path, first_card):
     # 更新の必要有り無しを調べる
     html = connect_html.GetBeautifulSoupFromDriver(driver)
     card_list = duel_masters_card_box.GetCardList(html)
@@ -69,30 +66,30 @@ def UpdateMasterData(driver, first_card):
     print('data top card : ' + first_card)
     if card_box[0].name != first_card:
         print("更新が必要")
-        global export_path
-        diff_path = export_path + '.diff'
+        diff_path = file_path + '.diff'
         # 差分ファイルの作成
         with open(diff_path, 'w', newline="", encoding='utf-8') as file:
-            duel_masters_card_box.DuelMastersCardBox(driver, 1, file, first_card)
-        data = []
+            duel_masters_card_box.DuelMastersCardBox(driver, 1, file)
+        diff_data = []
         # 実際のファイル読み込み
         with open(diff_path, 'r', newline="", encoding='utf-8') as file:
             diff_reader = csv.reader(file)
             diff_data = list(diff_reader)
-            with open(export_path, 'r', newline="", encoding='utf-8') as file:
-                reader = csv.reader(file)
-                exist_data = list(reader)
-                del exist_data[0]
-                print('new card count : ' + str(len(diff_data)))
-                data.extend(diff_data)
-                data.extend(exist_data)
+        #     # if not os.access(export_path, os.W_OK):
+        #     #     os.chmod(export_path, stat.S_IWRITE)
+        #     with open(file_path, 'r', newline="", encoding='utf-8') as file:
+        #         reader = csv.reader(file)
+        #         exist_data = list(reader)
+        #         del exist_data[0]
+        #         print('new card count : ' + str(len(diff_data)))
+        #         data.extend(diff_data)
+        #         data.extend(exist_data)
         os.remove(diff_path)
         # 結合したものをcsv化
-        with open(export_path, 'w', newline = "", encoding = 'utf-8') as file:
+        with open(file_path, 'w', newline = "", encoding = 'utf-8') as file:
             writer = csv.writer(file)
-            duel_masters_card_box.WriteCardBoxHeader(writer)
-            writer.writerows(data)
-        return len(data)
+            writer.writerows(diff_data)
+        return len(diff_data)
     return 0
 
 def PageCroll(driver, file_path):
@@ -107,7 +104,7 @@ def PageCroll(driver, file_path):
             row_count = len(matrix)
             if row_count > 1:
                 first_card = matrix[1][1]
-                value = UpdateMasterData(driver, first_card)
+                value = UpdateMasterData(driver, file_path, first_card)
                 if value > 1:
                     row_count = value
 
@@ -138,7 +135,7 @@ if __name__ == '__main__':
         search_button = driver.find_element_by_xpath('//*[@id="search_cond"]/div[3]/input[1]')
         search_button.click()
         # 以下ajaxの読み込み完了待ち
-        wait = WebDriverWait(driver, 15)
+        wait = WebDriverWait(driver, 100)
         wait.until(lambda driver: driver.execute_script('return jQuery.active') == 0)
         wait.until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
         print(id) # value属性の値
