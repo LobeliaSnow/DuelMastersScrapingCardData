@@ -1,35 +1,22 @@
 # デュエルマスターズのカードデータをスクレイピング
-import requests
-from bs4 import BeautifulSoup
 import connect_html
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.select import Select
 import psutil
 
-import os
 import csv
-import platform
 import concurrent.futures
 import time
 
 # 環境変数
 # enviorment.iniで変えるようにしてください
-chrome_driver_path = 'chromedriver'
 headless_mode = True
 export_path = 'master'
 thread_count = -1
 
-def SettingEnviorment(driver_path, headless, exp_path, threads):
-    global chrome_driver_path
+def SettingEnviorment( headless, exp_path, threads):
     global headless_mode
     global export_path
     global thread_count
-    chrome_driver_path = driver_path
     headless_mode = headless
     export_path = exp_path
     thread_count = threads

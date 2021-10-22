@@ -1,32 +1,21 @@
 # デュエルマスターズのカードデータをスクレイピング
-import requests
-from bs4 import BeautifulSoup
 import connect_html
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.select import Select
 import configparser
-import psutil
 
 import os
 import csv
-import stat
 import duel_masters_card_box
 
 # 環境変数
 # enviorment.iniで変えるようにしてください
-chrome_driver_path = 'chromedriver'
 headless_mode = True
 export_path = 'master'
 thread_count = -1
 
 # 環境変数の読み込み
 def LoadEnviormentVariables(enviorment_path):
-    global chrome_driver_path
     global headless_mode
     global export_path
     global thread_count
@@ -34,11 +23,6 @@ def LoadEnviormentVariables(enviorment_path):
     if os.path.exists(enviorment_path):
         config = configparser.ConfigParser()
         config.read(enviorment_path)
-        try:
-            data = config.get("settings", "chrome_driver_path")
-            chrome_driver_path = data
-        except:
-            pass
         try:
             data = config.get("settings", "headless_mode")
             headless_mode = eval(data)
@@ -54,7 +38,7 @@ def LoadEnviormentVariables(enviorment_path):
             thread_count = int(data)
         except:
             pass
-    duel_masters_card_box.SettingEnviorment(chrome_driver_path,headless_mode,export_path,thread_count)
+    duel_masters_card_box.SettingEnviorment(headless_mode,export_path,thread_count)
 
 def IsLatestData(driver, first_card, card_count):
     # 更新の必要有り無しを調べる

@@ -10,10 +10,6 @@ def GetDriver(url, headless = True):
     # Headlessモードを有効にする（コメントアウトするとブラウザが実際に立ち上がります）
     options = webdriver.ChromeOptions()
     options.set_headless(headless)
-    # profile_path = "C:\\Users\\black\\AppData\\Local\\Google\\Chrome\\User Data"
-    # os.makedirs(profile_path, exist_ok=True)
-    # options.add_argument('--user-data-dir=' + profile_path)
-
     # ブラウザを起動する
     driver = webdriver.Chrome(chrome_options = options, executable_path = ChromeDriverManager().install())
     driver.set_page_load_timeout(120)
