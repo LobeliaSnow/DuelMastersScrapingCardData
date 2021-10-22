@@ -152,7 +152,7 @@ def CardPageProcedure(card_list):
         print(data_link)
         if page_driver is None:
             # 新規タブで
-            page_driver = connect_html.GetDriver('https://dm.takaratomy.co.jp' + data_link, chrome_driver_path, headless_mode)
+            page_driver = connect_html.GetDriver('https://dm.takaratomy.co.jp' + data_link, headless_mode)
         else:
             # 現在のタブで
             page_driver.get('https://dm.takaratomy.co.jp' + data_link)

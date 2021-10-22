@@ -3,15 +3,20 @@
 from urllib import request
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 
-def GetDriver(url,driver_path = 'chromedriver', headless = True):
+def GetDriver(url, headless = True):
     # ブラウザのオプションを格納する変数をもらってきます。
-    options = Options()
     # Headlessモードを有効にする（コメントアウトするとブラウザが実際に立ち上がります）
+    options = webdriver.ChromeOptions()
     options.set_headless(headless)
+    # profile_path = "C:\\Users\\black\\AppData\\Local\\Google\\Chrome\\User Data"
+    # os.makedirs(profile_path, exist_ok=True)
+    # options.add_argument('--user-data-dir=' + profile_path)
+
     # ブラウザを起動する
-    driver = webdriver.Chrome(chrome_options = options, executable_path = driver_path)
+    driver = webdriver.Chrome(chrome_options = options, executable_path = ChromeDriverManager().install())
+    driver.set_page_load_timeout(120)
     # ブラウザでアクセスする
     driver.get(url)
     return driver
@@ -24,8 +29,11 @@ def GetBeautifulSoupFromDriver(driver):
     return soup
 
 def ReleaseDriver(driver):
-    driver.close()
-    driver.quit()
+    try:
+        driver.close()
+        driver.quit()
+    except:
+        pass
 
 def GetBeautifulSoupFromHTML(url):
     html = request.urlopen(url)

@@ -1,7 +1,7 @@
 # readme
 - これはデュエルマスターズのカードデータをすべてcsv化するプログラムです
 - Python3.7で開発しています(Python3.9で実行可能なことを確認済み)
-- requests,beautifusoup4,selenium,configparser,psutilに依存しています、Python3系でpip installしてから使用してください
+- requests,beautifusoup4,selenium,configparser,psutil,webdriver_managerに依存しています、Python3系でpip installしてから使用してください
 - 現在、タカラトミーのページでいくつかリンク切れを起こしています、カード名がunlink cardとして保存されますので、必要であれば手動対応お願いします。
 - 強制終了しないでください、裏で非表示のchromeとchromedriveがゾンビ化する可能性があります(タスクキルは可能だが量が膨大)
 - ajaxの都合ですべてchromeで開きながら行っているため、非常に低速です

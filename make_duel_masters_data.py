@@ -56,7 +56,7 @@ def LoadEnviormentVariables(enviorment_path):
             pass
     duel_masters_card_box.SettingEnviorment(chrome_driver_path,headless_mode,export_path,thread_count)
 
-def UpdateMasterData(driver, file_path, first_card):
+def IsLatestData(driver, first_card, card_count):
     # 更新の必要有り無しを調べる
     html = connect_html.GetBeautifulSoupFromDriver(driver)
     card_list = duel_masters_card_box.GetCardList(html)
@@ -64,33 +64,10 @@ def UpdateMasterData(driver, file_path, first_card):
     card_box = duel_masters_card_box.CardPageProcedure(card_list)
     print('top card : ' + card_box[0].name)
     print('data top card : ' + first_card)
-    if card_box[0].name != first_card:
-        print("更新が必要")
-        diff_path = file_path + '.diff'
-        # 差分ファイルの作成
-        with open(diff_path, 'w', newline="", encoding='utf-8') as file:
-            duel_masters_card_box.DuelMastersCardBox(driver, 1, file)
-        diff_data = []
-        # 実際のファイル読み込み
-        with open(diff_path, 'r', newline="", encoding='utf-8') as file:
-            diff_reader = csv.reader(file)
-            diff_data = list(diff_reader)
-        #     # if not os.access(export_path, os.W_OK):
-        #     #     os.chmod(export_path, stat.S_IWRITE)
-        #     with open(file_path, 'r', newline="", encoding='utf-8') as file:
-        #         reader = csv.reader(file)
-        #         exist_data = list(reader)
-        #         del exist_data[0]
-        #         print('new card count : ' + str(len(diff_data)))
-        #         data.extend(diff_data)
-        #         data.extend(exist_data)
-        os.remove(diff_path)
-        # 結合したものをcsv化
-        with open(file_path, 'w', newline = "", encoding = 'utf-8') as file:
-            writer = csv.writer(file)
-            writer.writerows(diff_data)
-        return len(diff_data)
-    return 0
+    count = html.select_one("#total_count").text
+    print('card count : ' + count)
+    print('data card count : ' + str(card_count))
+    return card_box[0].name == first_card and card_count == int(count)
 
 def PageCroll(driver, file_path):
     # 検索開始するカードの位置、既存のカード枚数 + 1
@@ -101,15 +78,18 @@ def PageCroll(driver, file_path):
         with open(file_path, 'r', newline="", encoding='utf-8') as file:
             reader = csv.reader(file)
             matrix = list(reader)
-            row_count = len(matrix)
+            row_count = len(matrix) - 1
             if row_count > 1:
                 first_card = matrix[1][1]
-                value = UpdateMasterData(driver, file_path, first_card)
-                if value > 1:
-                    row_count = value
+                if not IsLatestData(driver, first_card, row_count):
+                    print("更新が必要です")
+                    row_count = 1
+                else:
+                    print('データは最新です')
+                    return
 
     # 復帰処理などの都合上、追記モードで開く
-    with open(file_path, 'a', newline="", encoding='utf-8') as file:
+    with open(file_path, 'w', newline="", encoding='utf-8') as file:
         # カードボックス取得
         cardbox = duel_masters_card_box.DuelMastersCardBox(driver, row_count, file)
     print('complete')
@@ -119,7 +99,7 @@ def PageCroll(driver, file_path):
 if __name__ == '__main__':
     LoadEnviormentVariables("enviorment.ini")
     # chrome起動、操作権取得
-    driver = connect_html.GetDriver('https://dm.takaratomy.co.jp/card/', chrome_driver_path, headless_mode)
+    driver = connect_html.GetDriver('https://dm.takaratomy.co.jp/card/', headless_mode)
     html = connect_html.GetBeautifulSoupFromDriver(driver)
     # https://yuki.world/selenium-select/#t_valuexSelectselect_by_value
     products = driver.find_element_by_xpath('//*[@id="search_cond"]/div[1]/div[2]/select')
