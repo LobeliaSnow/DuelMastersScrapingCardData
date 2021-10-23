@@ -108,3 +108,4 @@ if __name__ == '__main__':
         print(product_name + ' complete')
     # chromeの解放 これをしないとバックグラウンドプロセスにchrome driverとgoogle chromeが大量に発生する
     connect_html.ReleaseDriver(driver)
+    print("全てのプロセスを完了しました")
